@@ -23,6 +23,12 @@
 
 #include <telex/error.h>
 
+struct telex_error {
+	int line;
+	int col;
+	char *message;
+};
+
 struct telex_error* telex_error_new(int line, int col, const char *fmt, ...);
 
 #endif /* ERROR_H */
