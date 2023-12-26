@@ -27,16 +27,6 @@
 #include "error.h"
 #include "token.h"
 
-struct token {
-	struct token *next;
-
-	token_type_t type;
-	const char *lexeme;
-	size_t lexeme_len;
-	int line;
-	int col;
-};
-
 static const char *_token_names[] = {
 	"TOKEN_INVALID",
 	"TOKEN_NEWLINE",

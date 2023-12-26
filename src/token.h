@@ -22,6 +22,7 @@
 #define TOKEN_H
 
 #include <telex/error.h>
+#include <stddef.h>
 
 typedef enum {
 	TOKEN_INVALID = 0,
@@ -44,7 +45,15 @@ typedef enum {
 	TOKEN_ANY
 } token_type_t;
 
-struct token;
+struct token {
+	struct token *next;
+
+	token_type_t type;
+	const char *lexeme;
+	size_t lexeme_len;
+	int line;
+	int col;
+};
 
 const char* token_type_str(token_type_t type);
 
