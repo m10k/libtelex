@@ -1,4 +1,4 @@
-OBJECTS = src/token.o src/error.o
+OBJECTS = src/token.o src/error.o src/parser.o src/telex.o
 TARGET = libtelex.so
 INCLUDES = -Iinclude
 CFLAGS = -Wall -g -c -fPIC -O2 $(INCLUDES)
