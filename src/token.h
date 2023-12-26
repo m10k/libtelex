@@ -52,6 +52,7 @@ struct token* tokenize(const char *input, struct telex_error **error);
 void token_free_all(struct token *token_list);
 const char *token_to_string(struct token *token);
 struct token* get_token(struct token **token_list, ...);
+struct token* next_relevant_token(struct token **token_list);
 int have_token(struct token **token_list, ...);
 void debug_token_list(struct token *token_list);
 

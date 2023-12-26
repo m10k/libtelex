@@ -389,7 +389,7 @@ const char* token_to_string(struct token *token)
 	return token ? token->lexeme : "(null)";
 }
 
-static struct token* next_relevant(struct token **tokens)
+struct token* next_relevant_token(struct token **tokens)
 {
 	struct token *next;
 
@@ -412,7 +412,7 @@ int have_token(struct token **token_list, ...)
 	token_type_t expected;
 	int matches;
 
-	token = next_relevant(token_list);
+	token = next_relevant_token(token_list);
 	matches = 0;
 
 	if (!token) {
@@ -440,7 +440,7 @@ struct token* get_token(struct token **token_list, ...)
 	token_type_t expected;
 	int matches;
 
-	token = next_relevant(token_list);
+	token = next_relevant_token(token_list);
 	matches = 0;
 
 	if (!token) {
