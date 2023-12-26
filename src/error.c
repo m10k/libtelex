@@ -70,3 +70,13 @@ int telex_error_get_col(struct telex_error *error)
 {
 	return error->col;
 }
+
+struct telex_error* telex_error_get_next(struct telex_error *error)
+{
+	return error->next;
+}
+
+void telex_error_set_next(struct telex_error *error, struct telex_error *next)
+{
+	error->next = next;
+}
