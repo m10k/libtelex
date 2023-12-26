@@ -47,9 +47,12 @@ static const char *_token_names[] = {
 	"TOKEN_INTEGER",
 	"TOKEN_LPAREN",
 	"TOKEN_RPAREN",
-	"TOKEN_PLUS",
-	"TOKEN_MINUS",
+	"TOKEN_LESS",
+	"TOKEN_DLESS",
+	"TOKEN_GREATER",
+	"TOKEN_DGREATER",
 	"TOKEN_COLON",
+	"TOKEN_POUND",
 	"TOKEN_OR",
 	"TOKEN_EOF",
 	"TOKEN_ANY",
@@ -65,6 +68,8 @@ static token_type_t _token_identify_regex(const char *start, const char **end);
 static token_type_t _token_identify_string(const char *start, const char **end);
 static token_type_t _token_identify_string_escape(const char *start, const char **end);
 static token_type_t _token_identify_integer(const char *start, const char **end);
+static token_type_t _token_identify_less(const char *start, const char **end);
+static token_type_t _token_identify_greater(const char *start, const char **end);
 static token_type_t _token_identify(const char *start, const char **end);
 
 static token_type_t _token_identify_regex(const char *start, const char **end)
@@ -161,14 +166,51 @@ static token_type_t _token_identify_integer(const char *start, const char **end)
 	return type;
 }
 
+static token_type_t _token_identify_less(const char *start, const char **end)
+{
+	char head;
+	const char *tail;
+	token_type_t type;
+
+	head = *start;
+	tail = start + 1;
+	type = TOKEN_LESS;
+	*end = start;
+
+	if (head == '<') {
+		type = TOKEN_DLESS;
+		*end = tail;
+	}
+
+	return type;
+}
+
+static token_type_t _token_identify_greater(const char *start, const char **end)
+{
+	char head;
+	const char *tail;
+	token_type_t type;
+
+	head = *start;
+	tail = start + 1;
+	type = TOKEN_GREATER;
+	*end = start;
+
+	if (head == '>') {
+		type = TOKEN_DGREATER;
+		*end = tail;
+	}
+
+	return type;
+}
+
 static const token_type_t _direct_map[] = {
 	['\0'] = TOKEN_EOF,
 	['\n'] = TOKEN_NEWLINE,
 	['\t'] = TOKEN_TAB,
 	[' '] = TOKEN_SPACE,
-	['+'] = TOKEN_PLUS,
-	['-'] = TOKEN_MINUS,
 	[':'] = TOKEN_COLON,
+	['#'] = TOKEN_POUND,
 	['('] = TOKEN_LPAREN,
 	[')'] = TOKEN_RPAREN,
 	['|'] = TOKEN_OR
@@ -189,9 +231,8 @@ static token_type_t _token_identify(const char *start, const char **end)
 	case '\n':
 	case '\t':
 	case ' ':
-	case '+':
-	case '-':
 	case ':':
+	case '#':
 	case '(':
 	case ')':
 	case '|':
@@ -207,6 +248,14 @@ static token_type_t _token_identify(const char *start, const char **end)
 
 	case '\'':
 		type = _token_identify_regex(tail, end);
+		break;
+
+	case '<':
+		type = _token_identify_less(tail, end);
+		break;
+
+	case '>':
+		type = _token_identify_greater(tail, end);
 		break;
 
 	case '0':
