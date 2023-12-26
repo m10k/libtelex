@@ -75,7 +75,7 @@ static token_type_t _token_identify_regex(const char *start, const char **end)
 
 	switch (head) {
 	case '\'':
-		*end = start;
+		*end = tail;
 		type = TOKEN_REGEX;
 		break;
 
