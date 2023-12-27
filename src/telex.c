@@ -49,11 +49,48 @@ int telex_parse(struct telex **telex,
 
 void telex_debug(struct telex *telex)
 {
-	parser_debug_telex(telex, 0);
+        parser_debug_telex(telex);
 }
 
 void telex_free(struct telex *telex)
 {
 	/* FIXME: Implement me */
 	return;
+}
+
+int telex_to_string(struct telex *telex, char *str, const size_t str_size)
+{
+	return -ENOSYS;
+}
+
+int telex_append(struct telex *head, struct telex *tail)
+{
+	return -ENOSYS;
+}
+
+int telex_clone(struct telex *src, struct telex *dst)
+{
+	return -ENOSYS;
+}
+
+void telex_simplify(struct telex *telex)
+{
+	/* FIXME: Should this be done during parsing? */
+	return;
+}
+
+const char* telex_lookup(struct telex *telex,
+			 const char *start,
+			 const size_t size,
+			 const char *pos)
+{
+
+}
+
+const char* telex_lookup_multi(const char *start,
+			       const size_t size,
+			       const char *pos,
+			       const int n, ...)
+{
+
 }

@@ -36,7 +36,7 @@ void parser_free(struct parser *parser);
 int parser_parse(struct parser *parser, const char *input);
 
 struct telex* parser_get_telex(struct parser *parser);
-void parser_debug_telex(struct telex *telex, int depth);
+void parser_debug_telex(struct telex *telex);
 struct telex_error* parser_get_errors(struct parser *parser);
 void parser_add_error(struct parser *parser, struct telex_error *error);
 

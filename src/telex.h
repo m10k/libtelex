@@ -24,6 +24,8 @@
 #include <telex/telex.h>
 #include "token.h"
 
+struct telex;
+
 struct col_expr {
 	struct token *pound;
 	struct token *integer;
@@ -38,27 +40,31 @@ struct stringy {
 	struct token *token;
 };
 
-struct match_expr {
-	struct match_expr *match_expr;
-	struct token *or;
-	struct stringy *stringy;
-};
-
 struct primary_expr {
-	struct match_expr *match_expr;
+	struct stringy *stringy;
 	struct line_expr *line_expr;
 	struct col_expr *col_expr;
+
+	struct token *lparen;
+	struct telex *telex;
+	struct token *rparen;
 };
 
-struct subtelex_list {
-	struct subtelex_list *subtelex_list;
-	struct token *prefix;
+struct or_expr {
+	struct or_expr *or_expr;
+	struct token *or;
 	struct primary_expr *primary_expr;
+};
+
+struct compound_expr {
+	struct compound_expr *compound_expr;
+	struct token *prefix;
+	struct or_expr *or_expr;
 };
 
 struct telex {
 	struct token *prefix;
-	struct subtelex_list *subtelex_list;
+	struct compound_expr *compound_expr;
 };
 
 #endif /* TELEX_H */

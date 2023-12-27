@@ -40,6 +40,9 @@
 		parser_add_error(context, error);			\
 	} while (0);
 
+struct telex* parse_telex(struct token **tokens, struct parser *context);
+void debug_telex(struct telex *telex, int depth);
+
 struct token* parse_prefix(struct token **tokens, struct parser *context)
 {
 	return get_token(tokens, TOKEN_LESS, TOKEN_DLESS, TOKEN_GREATER, TOKEN_DGREATER, 0);
@@ -114,38 +117,6 @@ struct stringy* parse_stringy(struct token **tokens, struct parser *context)
 	return stringy;
 }
 
-struct match_expr* parse_match_expr(struct token **tokens, struct parser *context)
-{
-	struct match_expr *top;
-	struct token *or;
-
-	assert(tokens);
-	assert(*tokens);
-
-	top = NULL;
-	or = NULL;
-
-	do {
-		struct match_expr *expr;
-
-		expr = calloc(1, sizeof(*expr));
-		assert(expr);
-
-		if (!(expr->stringy = parse_stringy(tokens, context))) {
-			EXPECTED_GRAMMAR("stringy", *tokens);
-			assert(0);
-		}
-
-		expr->match_expr = top;
-		expr->or = or;
-		top = expr;
-
-		or = get_token(tokens, TOKEN_OR, 0);
-	} while(or);
-
-	return top;
-}
-
 struct primary_expr* parse_primary_expr(struct token **tokens, struct parser *context)
 {
 	struct primary_expr *expr;
@@ -157,27 +128,76 @@ struct primary_expr* parse_primary_expr(struct token **tokens, struct parser *co
 	assert(expr);
 
 	if (have_token(tokens, TOKEN_STRING, TOKEN_REGEX, 0)) {
-		expr->match_expr = parse_match_expr(tokens, context);
+		expr->stringy = parse_stringy(tokens, context);
 	} else if(have_token(tokens, TOKEN_COLON, 0)) {
 		expr->line_expr = parse_line_expr(tokens, context);
 	} else if(have_token(tokens, TOKEN_POUND, TOKEN_INTEGER, 0)) {
 		expr->col_expr = parse_col_expr(tokens, context);
+	} else if(have_token(tokens, TOKEN_LPAREN, 0)) {
+		expr->lparen = get_token(tokens, TOKEN_LPAREN, 0);
+
+		if (!(expr->telex = parse_telex(tokens, context))) {
+			EXPECTED_GRAMMAR("telex", tokens);
+			assert(0);
+		}
+
+		if (!(expr->rparen = get_token(tokens, TOKEN_RPAREN, 0))) {
+			EXPECTED_GRAMMAR("`)'", tokens);
+			assert(0);
+		}
 	} else {
-		EXPECTED_GRAMMAR("match, line, or column expression", *tokens);
+		EXPECTED_GRAMMAR("match, line, or column expression, or nested telex", tokens);
 		assert(0);
 	}
 
 	return expr;
 }
 
-struct subtelex_list* parse_subtelex_list(struct token **tokens, struct parser *context)
+struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 {
-	struct subtelex_list *top;
+	struct or_expr *top;
+	struct token *or;
+
+	/*
+	 * or-expr = or-expr '|' primary-expr
+	 *         | primary-expr
+	 */
+
+	assert(tokens);
+	assert(*tokens);
+
+	top = NULL;
+	or = NULL;
+
+	do {
+		struct or_expr *expr;
+
+		expr = calloc(1, sizeof(*expr));
+		assert(expr);
+
+		if (!(expr->primary_expr = parse_primary_expr(tokens, context))) {
+			EXPECTED_GRAMMAR("primary-expr", tokens);
+			assert(0);
+		}
+
+		expr->or = or;
+		expr->or_expr = top;
+
+		top = expr;
+		or = get_token(tokens, TOKEN_OR, 0);
+	} while (or);
+
+	return top;
+}
+
+struct compound_expr* parse_compound_expr(struct token **tokens, struct parser *context)
+{
+	struct compound_expr *top;
 	struct token *prefix;
 
 	/*
-	 * subtelex-list = subtelex-list prefix primary-telex
-	 *               | primary-telex
+	 * compound-expr = compound-expr prefix or-expr
+	 *               | or-expr
 	 */
 
 	assert(tokens);
@@ -187,20 +207,20 @@ struct subtelex_list* parse_subtelex_list(struct token **tokens, struct parser *
 	prefix = NULL;
 
 	do {
-	        struct subtelex_list *list;
+	        struct compound_expr *expr;
 
-		list = calloc(1, sizeof(*list));
-		assert(list);
+		expr = calloc(1, sizeof(*expr));
+		assert(expr);
 
-		if (!(list->primary_expr = parse_primary_expr(tokens, context))) {
-			EXPECTED_GRAMMAR("primary-expr", *tokens);
+		if (!(expr->or_expr = parse_or_expr(tokens, context))) {
+			EXPECTED_GRAMMAR("or-expr", tokens);
 			assert(0);
 		}
 
-		list->prefix = prefix;
-		list->subtelex_list = top;
+		expr->prefix = prefix;
+		expr->compound_expr = top;
 
-		top = list;
+		top = expr;
 		prefix = parse_prefix(tokens, context);
 	} while (prefix);
 
@@ -212,8 +232,8 @@ struct telex* parse_telex(struct token **tokens, struct parser *context)
 	struct telex *telex;
 
 	/*
-	 * telex = prefix subtelex-list
-	 *       | subtelex-list
+	 * telex = prefix compound-expr
+	 *       | compound-expr
 	 */
 
 	assert(tokens);
@@ -225,8 +245,8 @@ struct telex* parse_telex(struct token **tokens, struct parser *context)
 	/* no error checking because prefix is optional */
 	telex->prefix = parse_prefix(tokens, context);
 
-	if (!(telex->subtelex_list = parse_subtelex_list(tokens, context))) {
-		EXPECTED_GRAMMAR("subtelex_list", *tokens);
+	if (!(telex->compound_expr = parse_compound_expr(tokens, context))) {
+		EXPECTED_GRAMMAR("compound_expr", *tokens);
 		assert(0);
 	}
 
@@ -241,24 +261,6 @@ void debug_stringy(struct stringy *expr, int depth)
 
 	fprintf(stderr, "%*sstringy [ %s ]\n", depth, "",
 		expr->token ? expr->token->lexeme : "(null)");
-}
-
-void debug_match_expr(struct match_expr *expr, int depth)
-{
-	if (!expr) {
-		return;
-	}
-
-	if (expr->or) {
-		fprintf(stderr, "%*smatch_expr [ %p %s %p ]\n", depth, "",
-			expr->match_expr, expr->or->lexeme, expr->stringy);
-	} else {
-		fprintf(stderr, "%*smatch_expr [ %p ]\n", depth, "",
-			expr->stringy);
-	}
-
-	debug_match_expr(expr->match_expr, depth + 1);
-	debug_stringy(expr->stringy, depth + 1);
 }
 
 void debug_line_expr(struct line_expr *expr, int depth)
@@ -288,37 +290,57 @@ void debug_primary_expr(struct primary_expr *expr, int depth)
 		return;
 	}
 
-	fprintf(stderr, "%*sprimary_expr [ %p %p %p ]\n", depth, "",
-		expr->match_expr,
+	fprintf(stderr, "%*sprimary_expr [ %p %p %p %p ]\n", depth, "",
+		expr->stringy,
 		expr->line_expr,
-		expr->col_expr);
+		expr->col_expr,
+		expr->telex);
 
-	debug_match_expr(expr->match_expr, depth + 1);
+	debug_stringy(expr->stringy, depth + 1);
 	debug_line_expr(expr->line_expr, depth + 1);
 	debug_col_expr(expr->col_expr, depth + 1);
+	debug_telex(expr->telex, depth + 1);
 }
 
-void debug_subtelex_list(struct subtelex_list *list, int depth)
+void debug_or_expr(struct or_expr *expr, int depth)
 {
-	if (!list) {
+	if (!expr) {
 		return;
 	}
 
-	if (list->prefix) {
-		fprintf(stderr, "%*ssubtelex_list [ %p %s %p ]\n", depth, "",
-			list->subtelex_list,
-			list->prefix->lexeme,
-			list->primary_expr);
+	if (expr->or) {
+		fprintf(stderr, "%*sor_expr [ %p %s %p ]\n", depth, "",
+			expr->or_expr, expr->or->lexeme, expr->primary_expr);
 	} else {
-		fprintf(stderr, "%*ssubtelex_list [ %p ]\n", depth, "",
-			list->primary_expr);
+		fprintf(stderr, "%*sor_expr [ %p ]\n", depth, "",
+			expr->primary_expr);
 	}
 
-	debug_subtelex_list(list->subtelex_list, depth + 1);
-	debug_primary_expr(list->primary_expr, depth + 1);
+	debug_or_expr(expr->or_expr, depth + 1);
+	debug_primary_expr(expr->primary_expr, depth + 1);
 }
 
-void parser_debug_telex(struct telex *telex, int depth)
+void debug_compound_expr(struct compound_expr *expr, int depth)
+{
+	if (!expr) {
+		return;
+	}
+
+	if (expr->prefix) {
+		fprintf(stderr, "%*scompound_expr [ %p %s %p ]\n", depth, "",
+			expr->compound_expr,
+			expr->prefix->lexeme,
+			expr->or_expr);
+	} else {
+		fprintf(stderr, "%*scompound_expr [ %p ]\n", depth, "",
+		        expr->or_expr);
+	}
+
+	debug_compound_expr(expr->compound_expr, depth + 1);
+	debug_or_expr(expr->or_expr, depth + 1);
+}
+
+void debug_telex(struct telex *telex, int depth)
 {
 	if (!telex) {
 		return;
@@ -326,9 +348,14 @@ void parser_debug_telex(struct telex *telex, int depth)
 
 	fprintf(stderr, "%*stelex [ %s, %p ]\n", depth, "",
 		telex->prefix ? telex->prefix->lexeme : "(null)",
-		telex->subtelex_list);
+		telex->compound_expr);
 
-	debug_subtelex_list(telex->subtelex_list, depth + 1);
+	debug_compound_expr(telex->compound_expr, depth + 1);
+}
+
+void parser_debug_telex(struct telex *telex)
+{
+	debug_telex(telex, 0);
 }
 
 struct parser* parser_new(void)
