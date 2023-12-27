@@ -23,6 +23,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <telex/error.h>
 #include "error.h"
 #include "token.h"
@@ -286,6 +287,14 @@ static struct token* token_new(token_type_t type,
 		if (!(token->lexeme = strndup(lexeme, lexeme_len))) {
 			free(token);
 			token = NULL;
+		} else if(type == TOKEN_INTEGER) {
+			errno = 0;
+			token->integer = strtoll(token->lexeme, NULL, 10);
+
+			if (errno) {
+				free(token);
+				token = NULL;
+			}
 		}
 	}
 

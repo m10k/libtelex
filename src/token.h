@@ -53,6 +53,7 @@ struct token {
 	size_t lexeme_len;
 	int line;
 	int col;
+	long long integer;
 };
 
 const char* token_type_str(token_type_t type);
