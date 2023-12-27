@@ -24,9 +24,9 @@
 #include "telex.h"
 #include "parser.h"
 
-int telex_parse(const char *input,
-		struct telex **telex,
-		struct telex_error **errors)
+int telex_parse(struct telex **telex,
+                const char *input,
+                struct telex_error **errors)
 {
 	struct parser *parser;
 	int have_errors;
