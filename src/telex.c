@@ -20,9 +20,14 @@
 
 #include <telex/error.h>
 #include <telex/telex.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include "telex.h"
 #include "parser.h"
+
+int eval_telex(struct telex *telex, const char *start, const size_t size,
+               const char *pos, token_type_t prefix, const char **result);
 
 int telex_parse(struct telex **telex,
                 const char *input,
@@ -63,12 +68,22 @@ int telex_to_string(struct telex *telex, char *str, const size_t str_size)
 	return -ENOSYS;
 }
 
-int telex_append(struct telex *head, struct telex *tail)
+int telex_combine(struct telex **new, struct telex *first, struct telex *second)
 {
+	struct telex *combined;
+
+	if (!new || !first || !second) {
+		return -EINVAL;
+	}
+
+	if (!(combined = calloc(1, sizeof(*combined)))) {
+		return -ENOMEM;
+	}
+
 	return -ENOSYS;
 }
 
-int telex_clone(struct telex *src, struct telex *dst)
+int telex_clone(struct telex **new, struct telex *old)
 {
 	return -ENOSYS;
 }
@@ -84,7 +99,17 @@ const char* telex_lookup(struct telex *telex,
 			 const size_t size,
 			 const char *pos)
 {
+	const char *result;
+	token_type_t prefix;
 
+	result = NULL;
+	prefix = telex->prefix ? telex->prefix->type : TOKEN_INVALID;
+
+	if (eval_telex(telex, start, size, pos, prefix, &result) < 0) {
+		return NULL;
+	}
+
+	return result;
 }
 
 const char* telex_lookup_multi(const char *start,
@@ -92,5 +117,32 @@ const char* telex_lookup_multi(const char *start,
 			       const char *pos,
 			       const int n, ...)
 {
+	token_type_t prefix;
+	va_list args;
+	int i;
 
+	prefix = TOKEN_INVALID;
+	va_start(args, n);
+
+	for (i = 0; i < n; i++) {
+		struct telex *telex;
+		int err;
+
+		telex = va_arg(args, struct telex*);
+
+		if (telex->prefix) {
+			prefix = telex->prefix->type;
+		}
+
+		err = eval_telex(telex, start, size, pos, prefix, &pos);
+
+		if (err < 0) {
+			pos = NULL;
+			break;
+		}
+	}
+
+	va_end(args);
+
+	return pos;
 }
