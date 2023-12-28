@@ -66,7 +66,7 @@ struct col_expr* parse_col_expr(struct token **tokens, struct parser *context)
 	expr->pound = get_token(tokens, TOKEN_POUND);
 	if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
 		EXPECTED_GRAMMAR("integer", tokens);
-		free(expr);
+		col_expr_free(expr);
 		expr = NULL;
 	}
 
@@ -98,7 +98,7 @@ struct line_expr* parse_line_expr(struct token **tokens, struct parser *context)
 	}
 
 	if (error) {
-		free(expr);
+	        line_expr_free(expr);
 		expr = NULL;
 	}
 
@@ -115,7 +115,7 @@ struct stringy* parse_stringy(struct token **tokens, struct parser *context)
 	if ((stringy = calloc(1, sizeof(*stringy)))) {
 		if (!(stringy->token = get_token(tokens, TOKEN_STRING, TOKEN_REGEX, 0))) {
 			EXPECTED_GRAMMAR("string or regex", *tokens);
-			free(stringy);
+			stringy_free(stringy);
 			stringy = NULL;
 		}
 	}
@@ -158,7 +158,7 @@ struct primary_expr* parse_primary_expr(struct token **tokens, struct parser *co
 	}
 
 	if (error) {
-		free(expr);
+		primary_expr_free(expr);
 		expr = NULL;
 	}
 
@@ -202,14 +202,9 @@ struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 		or = get_token(tokens, TOKEN_OR, 0);
 	} while (or);
 
-	if (error) {
-		while (top) {
-			struct or_expr *next;
-
-			next = top->or_expr;
-			free(top);
-			top = next;
-		}
+	if (error && top) {
+		or_expr_free(top);
+		top = NULL;
 	}
 
 	return top;
@@ -254,14 +249,9 @@ struct compound_expr* parse_compound_expr(struct token **tokens, struct parser *
 		prefix = parse_prefix(tokens, context);
 	} while (prefix);
 
-	if (error) {
-		while (top) {
-			struct compound_expr *next;
-
-			next = top->compound_expr;
-			free(top);
-			top = next;
-		}
+	if (error && top) {
+		compound_expr_free(top);
+		top = NULL;
 	}
 
 	return top;
@@ -285,7 +275,7 @@ struct telex* parse_telex(struct token **tokens, struct parser *context)
 
 		if (!(telex->compound_expr = parse_compound_expr(tokens, context))) {
 			EXPECTED_GRAMMAR("compound_expr", *tokens);
-			free(telex);
+			telex_free(telex);
 			telex = NULL;
 		}
 	}

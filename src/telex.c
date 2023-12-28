@@ -57,12 +57,6 @@ void telex_debug(struct telex *telex)
         parser_debug_telex(telex);
 }
 
-void telex_free(struct telex *telex)
-{
-	/* FIXME: Implement me */
-	return;
-}
-
 int telex_to_string(struct telex *telex, char *str, const size_t str_size)
 {
 	return -ENOSYS;
@@ -80,11 +74,7 @@ int telex_combine(struct telex **new, struct telex *first, struct telex *second)
 		return -ENOMEM;
 	}
 
-	return -ENOSYS;
-}
 
-int telex_clone(struct telex **new, struct telex *old)
-{
 	return -ENOSYS;
 }
 
@@ -145,4 +135,232 @@ const char* telex_lookup_multi(const char *start,
 	va_end(args);
 
 	return pos;
+}
+
+struct col_expr* col_expr_clone(struct col_expr *expr)
+{
+	struct col_expr *clone;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		clone->pound = expr->pound;
+		clone->integer = expr->integer;
+	}
+
+	return clone;
+}
+
+void col_expr_free(struct col_expr *expr)
+{
+	free(expr);
+}
+
+struct line_expr* line_expr_clone(struct line_expr *expr)
+{
+	struct line_expr *clone;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		clone->colon = expr->colon;
+		clone->integer = expr->integer;
+	}
+
+	return clone;
+}
+
+void line_expr_free(struct line_expr *expr)
+{
+	free(expr);
+}
+
+struct stringy* stringy_clone(struct stringy *stringy)
+{
+	struct stringy *clone;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		clone->token = stringy->token;
+	}
+
+	return clone;
+}
+
+void stringy_free(struct stringy *stringy)
+{
+	free(stringy);
+}
+
+struct primary_expr* primary_expr_clone(struct primary_expr *expr)
+{
+	struct primary_expr *clone;
+	int error;
+
+	error = 1;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		if (expr->stringy &&
+		    !(clone->stringy = stringy_clone(expr->stringy))) {
+				goto cleanup;
+		}
+
+		if (expr->line_expr &&
+		    !(clone->line_expr = line_expr_clone(expr->line_expr))) {
+			goto cleanup;
+		}
+
+		if (expr->col_expr &&
+		    !(clone->col_expr = col_expr_clone(expr->col_expr))) {
+			goto cleanup;
+		}
+
+		clone->lparen = expr->lparen;
+
+		if (expr->telex &&
+		    !(clone->telex = telex_clone(expr->telex))) {
+			goto cleanup;
+		}
+
+		clone->rparen = expr->rparen;
+		error = 0;
+	}
+
+cleanup:
+	if (error) {
+		primary_expr_free(clone);
+		clone = NULL;
+	}
+
+	return clone;
+}
+
+void primary_expr_free(struct primary_expr *expr)
+{
+	if (expr->stringy) {
+		stringy_free(expr->stringy);
+	}
+
+	if (expr->line_expr) {
+		line_expr_free(expr->line_expr);
+	}
+
+	if (expr->col_expr) {
+		col_expr_free(expr->col_expr);
+	}
+
+	if (expr->telex) {
+		telex_free(expr->telex);
+	}
+
+	free(expr);
+}
+
+struct or_expr* or_expr_clone(struct or_expr *expr)
+{
+	struct or_expr *clone;
+	int error;
+
+	error = 1;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		if (expr->or_expr &&
+		    !(clone->or_expr = or_expr_clone(expr->or_expr))) {
+			goto cleanup;
+		}
+
+		if (expr->primary_expr &&
+		    !(clone->primary_expr = primary_expr_clone(expr->primary_expr))) {
+			goto cleanup;
+		}
+
+		clone->or = expr->or;
+		error = 0;
+	}
+
+cleanup:
+	if (error) {
+		or_expr_free(clone);
+		clone = NULL;
+	}
+
+	return clone;
+}
+
+void or_expr_free(struct or_expr *expr)
+{
+	if (expr->or_expr) {
+		or_expr_free(expr->or_expr);
+	}
+
+	if (expr->primary_expr) {
+		primary_expr_free(expr->primary_expr);
+	}
+
+	free(expr);
+}
+
+struct compound_expr* compound_expr_clone(struct compound_expr *expr)
+{
+	struct compound_expr *clone;
+	int error;
+
+	error = 1;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		if (expr->compound_expr &&
+		    !(clone->compound_expr = compound_expr_clone(expr->compound_expr))) {
+			goto cleanup;
+		}
+
+		if (expr->or_expr &&
+		    !(clone->or_expr = or_expr_clone(expr->or_expr))) {
+			goto cleanup;
+		}
+
+		clone->prefix = expr->prefix;
+		error = 0;
+	}
+
+cleanup:
+	if (error) {
+		compound_expr_free(clone);
+		clone = NULL;
+	}
+
+	return clone;
+}
+
+void compound_expr_free(struct compound_expr *expr)
+{
+	if (expr->compound_expr) {
+		compound_expr_free(expr->compound_expr);
+	}
+
+	if (expr->or_expr) {
+		or_expr_free(expr->or_expr);
+	}
+
+	free(expr);
+}
+
+struct telex* telex_clone(struct telex *telex)
+{
+	struct telex *clone;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		clone->prefix = telex->prefix;
+
+		if (telex->compound_expr &&
+		    !(clone->compound_expr = compound_expr_clone(telex->compound_expr))) {
+			free(clone);
+			clone = NULL;
+		}
+	}
+
+	return clone;
+}
+
+void telex_free(struct telex *telex)
+{
+	if (telex->compound_expr) {
+		compound_expr_free(telex->compound_expr);
+	}
+
+	free(telex);
 }

@@ -31,14 +31,23 @@ struct col_expr {
 	struct token *integer;
 };
 
+struct col_expr* col_expr_clone(struct col_expr *expr);
+void col_expr_free(struct col_expr *expr);
+
 struct line_expr {
 	struct token *colon;
 	struct token *integer;
 };
 
+struct line_expr* line_expr_clone(struct line_expr *expr);
+void line_expr_free(struct line_expr*);
+
 struct stringy {
 	struct token *token;
 };
+
+struct stringy* stringy_clone(struct stringy *stringy);
+void stringy_free(struct stringy *stringy);
 
 struct primary_expr {
 	struct stringy *stringy;
@@ -50,17 +59,26 @@ struct primary_expr {
 	struct token *rparen;
 };
 
+struct primary_expr* primary_expr_clone(struct primary_expr *expr);
+void primary_expr_free(struct primary_expr *expr);
+
 struct or_expr {
 	struct or_expr *or_expr;
 	struct token *or;
 	struct primary_expr *primary_expr;
 };
 
+struct or_expr* or_expr_clone(struct or_expr *expr);
+void or_expr_free(struct or_expr *expr);
+
 struct compound_expr {
 	struct compound_expr *compound_expr;
 	struct token *prefix;
 	struct or_expr *or_expr;
 };
+
+struct compound_expr* compound_expr_clone(struct compound_expr *expr);
+void compound_expr_free(struct compound_expr *expr);
 
 struct telex {
 	struct token *prefix;
