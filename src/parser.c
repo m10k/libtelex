@@ -66,7 +66,8 @@ struct col_expr* parse_col_expr(struct token **tokens, struct parser *context)
 	expr->pound = get_token(tokens, TOKEN_POUND);
 	if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
 		EXPECTED_GRAMMAR("integer", tokens);
-		assert(0);
+		free(expr);
+		expr = NULL;
 	}
 
 	return expr;
@@ -75,6 +76,7 @@ struct col_expr* parse_col_expr(struct token **tokens, struct parser *context)
 struct line_expr* parse_line_expr(struct token **tokens, struct parser *context)
 {
 	struct line_expr *expr;
+	int error;
 
 	/*
 	 * line_expr = ':' integer
@@ -83,17 +85,21 @@ struct line_expr* parse_line_expr(struct token **tokens, struct parser *context)
 	assert(tokens);
 	assert(*tokens);
 
-	expr = calloc(1, sizeof(*expr));
-	assert(expr);
+	error = 0;
 
-	if (!(expr->colon = get_token(tokens, TOKEN_COLON))) {
+	if (!(expr = calloc(1, sizeof(*expr)))) {
+		error = -ENOMEM;
+	} else if (!(expr->colon = get_token(tokens, TOKEN_COLON))) {
 		EXPECTED_GRAMMAR("colon", tokens);
-		assert(0);
+		error = -EBADMSG;
+	} else if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
+		EXPECTED_GRAMMAR("integer", tokens);
+		error = -EBADMSG;
 	}
 
-	if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
-		EXPECTED_GRAMMAR("integer", tokens);
-		assert(0);
+	if (error) {
+		free(expr);
+		expr = NULL;
 	}
 
 	return expr;
@@ -106,12 +112,12 @@ struct stringy* parse_stringy(struct token **tokens, struct parser *context)
 	assert(tokens);
 	assert(*tokens);
 
-	stringy = calloc(1, sizeof(*stringy));
-	assert(stringy);
-
-        if (!(stringy->token = get_token(tokens, TOKEN_STRING, TOKEN_REGEX, 0))) {
-		EXPECTED_GRAMMAR("string or regex", *tokens);
-		assert(0);
+	if ((stringy = calloc(1, sizeof(*stringy)))) {
+		if (!(stringy->token = get_token(tokens, TOKEN_STRING, TOKEN_REGEX, 0))) {
+			EXPECTED_GRAMMAR("string or regex", *tokens);
+			free(stringy);
+			stringy = NULL;
+		}
 	}
 
 	return stringy;
@@ -120,12 +126,15 @@ struct stringy* parse_stringy(struct token **tokens, struct parser *context)
 struct primary_expr* parse_primary_expr(struct token **tokens, struct parser *context)
 {
 	struct primary_expr *expr;
+	int error;
 
 	assert(tokens);
 	assert(*tokens);
 
-	expr = calloc(1, sizeof(*expr));
-	assert(expr);
+	if (!(expr = calloc(1, sizeof(*expr)))) {
+		return NULL;
+	}
+	error = 0;
 
 	if (have_token(tokens, TOKEN_STRING, TOKEN_REGEX, 0)) {
 		expr->stringy = parse_stringy(tokens, context);
@@ -138,16 +147,19 @@ struct primary_expr* parse_primary_expr(struct token **tokens, struct parser *co
 
 		if (!(expr->telex = parse_telex(tokens, context))) {
 			EXPECTED_GRAMMAR("telex", tokens);
-			assert(0);
-		}
-
-		if (!(expr->rparen = get_token(tokens, TOKEN_RPAREN, 0))) {
+			error = -EBADMSG;
+		} else if (!(expr->rparen = get_token(tokens, TOKEN_RPAREN, 0))) {
 			EXPECTED_GRAMMAR("`)'", tokens);
-			assert(0);
+			error = -EBADMSG;
 		}
 	} else {
 		EXPECTED_GRAMMAR("match, line, or column expression, or nested telex", tokens);
-		assert(0);
+		error = -EBADMSG;
+	}
+
+	if (error) {
+		free(expr);
+		expr = NULL;
 	}
 
 	return expr;
@@ -157,6 +169,7 @@ struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 {
 	struct or_expr *top;
 	struct token *or;
+	int error;
 
 	/*
 	 * or-expr = or-expr '|' primary-expr
@@ -168,6 +181,7 @@ struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 
 	top = NULL;
 	or = NULL;
+	error = 0;
 
 	do {
 		struct or_expr *expr;
@@ -177,7 +191,8 @@ struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 
 		if (!(expr->primary_expr = parse_primary_expr(tokens, context))) {
 			EXPECTED_GRAMMAR("primary-expr", tokens);
-			assert(0);
+			error = -EBADMSG;
+			break;
 		}
 
 		expr->or = or;
@@ -187,6 +202,16 @@ struct or_expr* parse_or_expr(struct token **tokens, struct parser *context)
 		or = get_token(tokens, TOKEN_OR, 0);
 	} while (or);
 
+	if (error) {
+		while (top) {
+			struct or_expr *next;
+
+			next = top->or_expr;
+			free(top);
+			top = next;
+		}
+	}
+
 	return top;
 }
 
@@ -194,6 +219,7 @@ struct compound_expr* parse_compound_expr(struct token **tokens, struct parser *
 {
 	struct compound_expr *top;
 	struct token *prefix;
+	int error;
 
 	/*
 	 * compound-expr = compound-expr prefix or-expr
@@ -205,16 +231,20 @@ struct compound_expr* parse_compound_expr(struct token **tokens, struct parser *
 
 	top = NULL;
 	prefix = NULL;
+	error = 0;
 
 	do {
 	        struct compound_expr *expr;
 
-		expr = calloc(1, sizeof(*expr));
-		assert(expr);
+		if (!(expr = calloc(1, sizeof(*expr)))) {
+			error = -ENOMEM;
+			break;
+		}
 
 		if (!(expr->or_expr = parse_or_expr(tokens, context))) {
 			EXPECTED_GRAMMAR("or-expr", tokens);
-			assert(0);
+			error = -EBADMSG;
+			break;
 		}
 
 		expr->prefix = prefix;
@@ -223,6 +253,16 @@ struct compound_expr* parse_compound_expr(struct token **tokens, struct parser *
 		top = expr;
 		prefix = parse_prefix(tokens, context);
 	} while (prefix);
+
+	if (error) {
+		while (top) {
+			struct compound_expr *next;
+
+			next = top->compound_expr;
+			free(top);
+			top = next;
+		}
+	}
 
 	return top;
 }
@@ -239,15 +279,15 @@ struct telex* parse_telex(struct token **tokens, struct parser *context)
 	assert(tokens);
 	assert(*tokens);
 
-	telex = calloc(1, sizeof(*telex));
-	assert(telex);
+	if ((telex = calloc(1, sizeof(*telex)))) {
+		/* no error checking because prefix is optional */
+		telex->prefix = parse_prefix(tokens, context);
 
-	/* no error checking because prefix is optional */
-	telex->prefix = parse_prefix(tokens, context);
-
-	if (!(telex->compound_expr = parse_compound_expr(tokens, context))) {
-		EXPECTED_GRAMMAR("compound_expr", *tokens);
-		assert(0);
+		if (!(telex->compound_expr = parse_compound_expr(tokens, context))) {
+			EXPECTED_GRAMMAR("compound_expr", *tokens);
+			free(telex);
+			telex = NULL;
+		}
 	}
 
 	return telex;
