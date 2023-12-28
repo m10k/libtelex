@@ -4,11 +4,6 @@
 #include <errno.h>
 #include "telex.h"
 
-struct match {
-	const char *start;
-	const char *end;
-};
-
 int eval_telex(struct telex *telex, const char *start, const size_t size,
                const char *pos, token_type_t prefix, const char **result);
 
