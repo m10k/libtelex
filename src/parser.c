@@ -36,7 +36,7 @@
 		error = telex_error_new(next->line, next->col,		\
 					"Expected %s but found `%s'",	\
 					msg,				\
-					token_to_string(next));		\
+					next->lexeme);			\
 		parser_add_error(context, error);			\
 	} while (0);
 

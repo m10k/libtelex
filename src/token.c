@@ -383,9 +383,23 @@ void debug_token_list(struct token *list)
 	printf("\n");
 }
 
-const char* token_to_string(struct token *token)
+int token_to_string(struct token *token, char *str, const size_t str_size)
 {
-	return token ? token->lexeme : "(null)";
+	const char *prefix;
+	const char *suffix;
+
+	prefix = "";
+	suffix = "";
+
+	if (token->type == TOKEN_STRING) {
+		prefix = "\"";
+		suffix = prefix;
+	} else if (token->type == TOKEN_REGEX) {
+		prefix = "'";
+		suffix = prefix;
+	}
+
+	return snprintf(str, str_size, "%s%s%s", prefix, token->lexeme, suffix);
 }
 
 struct token* next_relevant_token(struct token **tokens)
