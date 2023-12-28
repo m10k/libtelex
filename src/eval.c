@@ -115,10 +115,11 @@ int eval_line_expr(struct line_expr *expr, const char *start, const size_t size,
 			return 0;
 		}
 
-		pos = new_pos;
+		pos = new_pos + 1;
 	}
 
-	return -ENOENT;
+	*result = pos;
+	return 0;
 }
 
 int eval_col_expr(struct col_expr *expr, const char *start, const size_t size,
@@ -148,14 +149,17 @@ int eval_col_expr(struct col_expr *expr, const char *start, const size_t size,
 		new_pos = pos + dir;
 
 		if (new_pos < start || new_pos > (start + size) || *new_pos == '\n') {
-			*result = pos;
-			return 0;
+			if (*new_pos == '\n' && dir > 0) {
+				pos = new_pos;
+			}
+			break;
 		}
 
 		pos = new_pos;
 	}
 
-	return -ENOENT;
+	*result = pos;
+	return 0;
 }
 
 int eval_stringy(struct stringy *stringy, const char *start, const size_t size,
