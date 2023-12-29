@@ -278,6 +278,11 @@ static struct token* token_new(token_type_t type,
 {
 	struct token *token;
 
+	if (type == TOKEN_STRING || type == TOKEN_REGEX) {
+		lexeme++;
+		lexeme_len -= 2;
+	}
+
 	if ((token = calloc(1, sizeof(*token)))) {
 		token->type = type;
 		token->lexeme_len = lexeme_len;
