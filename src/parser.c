@@ -63,8 +63,8 @@ struct col_expr* parse_col_expr(struct token **tokens, struct parser *context)
 	expr = calloc(1, sizeof(*expr));
 	assert(expr);
 
-	expr->pound = get_token(tokens, TOKEN_POUND);
-	if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
+	expr->pound = get_token(tokens, TOKEN_POUND, 0);
+	if (!(expr->integer = get_token(tokens, TOKEN_INTEGER, 0))) {
 		EXPECTED_GRAMMAR("integer", tokens);
 		col_expr_free(expr);
 		expr = NULL;
@@ -89,10 +89,10 @@ struct line_expr* parse_line_expr(struct token **tokens, struct parser *context)
 
 	if (!(expr = calloc(1, sizeof(*expr)))) {
 		error = -ENOMEM;
-	} else if (!(expr->colon = get_token(tokens, TOKEN_COLON))) {
+	} else if (!(expr->colon = get_token(tokens, TOKEN_COLON, 0))) {
 		EXPECTED_GRAMMAR("colon", tokens);
 		error = -EBADMSG;
-	} else if (!(expr->integer = get_token(tokens, TOKEN_INTEGER))) {
+	} else if (!(expr->integer = get_token(tokens, TOKEN_INTEGER, 0))) {
 		EXPECTED_GRAMMAR("integer", tokens);
 		error = -EBADMSG;
 	}
