@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <stdio.h>
 #include "telex.h"
 #include "parser.h"
 
@@ -57,9 +58,164 @@ void telex_debug(struct telex *telex)
         parser_debug_telex(telex);
 }
 
+int line_expr_to_string(struct line_expr *expr, char *str, const size_t str_size)
+{
+	int total;
+	int written;
+
+	if ((total = token_to_string(expr->colon, str, str_size)) < 0) {
+		return total;
+	}
+
+	if ((written = token_to_string(expr->integer, str + total, str_size - total)) < 0) {
+		return total;
+	}
+
+	return total + written;
+}
+
+int col_expr_to_string(struct col_expr *expr, char *str, const size_t str_size)
+{
+	int total;
+	int written;
+
+	total = 0;
+
+	if (expr->pound) {
+		if ((total = token_to_string(expr->pound, str, str_size)) < 0) {
+			return total;
+		}
+	}
+
+	if ((written = token_to_string(expr->integer, str + total, str_size - total)) < 0) {
+		return total;
+	}
+
+	return total + written;
+}
+
+int stringy_to_string(struct stringy *stringy, char *str, const size_t str_size)
+{
+	return token_to_string(stringy->token, str, str_size);
+}
+
+int primary_expr_to_string(struct primary_expr *expr, char *str, const size_t str_size)
+{
+	int total;
+	int written;
+
+	if (expr->line_expr) {
+		return line_expr_to_string(expr->line_expr, str, str_size);
+	}
+
+	if (expr->col_expr) {
+		return col_expr_to_string(expr->col_expr, str, str_size);
+	}
+
+	if (expr->stringy) {
+		return stringy_to_string(expr->stringy, str, str_size);
+	}
+
+	if ((total = token_to_string(expr->lparen, str, str_size)) < 0) {
+		goto done;
+	}
+
+	if ((written = telex_to_string(expr->telex, str + total, str_size - total)) < 0) {
+		goto done;
+	}
+
+	total += written;
+
+	if ((written = token_to_string(expr->rparen, str + total, str_size - total)) < 0) {
+		goto done;
+	}
+
+	total += written;
+
+done:
+	return total;
+}
+
+int or_expr_to_string(struct or_expr *expr, char *str, const size_t str_size)
+{
+	int total;
+	int written;
+
+	total = 0;
+
+	if (expr->or_expr) {
+		if ((written = or_expr_to_string(expr->or_expr, str,
+						 str_size)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+	if (expr->or) {
+		if ((written = token_to_string(expr->or, str + total,
+					       str_size - total)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+	if (expr->primary_expr) {
+		if ((written = primary_expr_to_string(expr->primary_expr, str + total,
+						      str_size - total)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+done:
+	return total;
+}
+
+int compound_expr_to_string(struct compound_expr *expr, char *str, const size_t str_size)
+{
+	int total;
+	int written;
+
+	total = 0;
+
+	if (expr->compound_expr) {
+		if ((written = compound_expr_to_string(expr->compound_expr, str, str_size)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+	if (expr->prefix) {
+		if ((written = token_to_string(expr->prefix, str + total, str_size - total)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+	if (expr->or_expr) {
+		if ((written = or_expr_to_string(expr->or_expr, str + total, str_size - total)) < 0) {
+			goto done;
+		}
+
+		total += written;
+	}
+
+done:
+	return total;
+}
+
 int telex_to_string(struct telex *telex, char *str, const size_t str_size)
 {
-	return -ENOSYS;
+	int written;
+
+	written = telex->prefix ? token_to_string(telex->prefix, str, str_size) : 0;
+
+	return compound_expr_to_string(telex->compound_expr, str + written, str_size - written);
 }
 
 int telex_combine(struct telex **new, struct telex *first, struct telex *second)
@@ -358,9 +514,11 @@ struct telex* telex_clone(struct telex *telex)
 
 void telex_free(struct telex *telex)
 {
-	if (telex->compound_expr) {
-		compound_expr_free(telex->compound_expr);
-	}
+	if (telex) {
+		if (telex->compound_expr) {
+			compound_expr_free(telex->compound_expr);
+		}
 
-	free(telex);
+		free(telex);
+	}
 }
