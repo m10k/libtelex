@@ -1,0 +1,25 @@
+Source: libtelex
+Priority: optional
+Maintainer: Matthias Kruk <m@m10k.eu>
+Build-Depends: debhelper (>= 9), make, coreutils, gcc
+Standards-Version: 3.9.8
+Section: libs
+Homepage: https://m10k.eu
+
+Package: libtelex
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Parser and evaluator for text location expressions
+ Provides functions for parsing and evaluating text location
+ expressions, which allow documents to be navigated in a human-
+ friendy way.
+
+Package: libtelex-dev
+Section: libs
+Architecture: any
+Depends: libtelex
+Description: Parser and evaluator for text location expressions
+ Provides functions for parsing and evaluating text location
+ expressions, which allow documents to be navigated in a human-
+ friendy way.
