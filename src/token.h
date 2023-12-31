@@ -58,6 +58,9 @@ struct token {
 
 const char* token_type_str(token_type_t type);
 
+struct token* token_clone(struct token *token);
+void token_free(struct token **token);
+
 struct token* tokenize(const char *input, struct telex_error **error);
 void token_free_all(struct token *token_list);
 int token_to_string(struct token *token, char *str, const size_t str_size);

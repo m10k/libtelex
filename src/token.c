@@ -270,6 +270,39 @@ static token_type_t _token_identify(const char *start, const char **end)
 	return type;
 }
 
+void token_free(struct token **token)
+{
+	if (token && *token) {
+		if ((*token)->lexeme) {
+			free((void*)(*token)->lexeme);
+			(*token)->lexeme = NULL;
+		}
+
+		free(*token);
+		*token = NULL;
+	}
+}
+
+struct token* token_clone(struct token *token)
+{
+	struct token *clone;
+
+	if ((clone = calloc(1, sizeof(*clone)))) {
+		clone->type = token->type;
+		clone->lexeme_len = token->lexeme_len;
+		clone->line = token->line;
+		clone->col = token->col;
+		clone->integer = token->integer;
+		clone->next = NULL;
+
+		if (!(clone->lexeme = strdup(token->lexeme))) {
+			token_free(&clone);
+		}
+	}
+
+	return clone;
+}
+
 static struct token* token_new(token_type_t type,
 			       const char *lexeme,
 			       size_t lexeme_len,
@@ -378,7 +411,7 @@ struct token* tokenize(const char *input, struct telex_error **error)
 
 void debug_token_list(struct token *list)
 {
-	printf("Tokens in list %p:\n", list);
+	printf("Tokens in list %p:\n", (void*)list);
 
 	while (list) {
 		printf("%s: %s\n", token_type_str(list->type), list->lexeme);
@@ -478,7 +511,7 @@ struct token* get_token(struct token **token_list, ...)
 
 	if (matches) {
 		*token_list = token->next;
-		return token;
+		return token_clone(token);
 	}
 
 	return NULL;

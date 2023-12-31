@@ -305,9 +305,18 @@ struct col_expr* col_expr_clone(struct col_expr *expr)
 	return clone;
 }
 
-void col_expr_free(struct col_expr *expr)
+void col_expr_free(struct col_expr **expr)
 {
-	free(expr);
+	if (expr && *expr) {
+		if ((*expr)->pound) {
+			token_free(&(*expr)->pound);
+		}
+		if ((*expr)->integer) {
+			token_free(&(*expr)->integer);
+		}
+		free(*expr);
+		*expr = NULL;
+	}
 }
 
 struct line_expr* line_expr_clone(struct line_expr *expr)
@@ -322,9 +331,19 @@ struct line_expr* line_expr_clone(struct line_expr *expr)
 	return clone;
 }
 
-void line_expr_free(struct line_expr *expr)
+void line_expr_free(struct line_expr **expr)
 {
-	free(expr);
+	if (expr && *expr) {
+		if ((*expr)->colon) {
+			token_free(&(*expr)->colon);
+		}
+		if ((*expr)->integer) {
+			token_free(&(*expr)->integer);
+		}
+
+		free(*expr);
+		*expr = NULL;
+	}
 }
 
 struct stringy* stringy_clone(struct stringy *stringy)
@@ -338,9 +357,16 @@ struct stringy* stringy_clone(struct stringy *stringy)
 	return clone;
 }
 
-void stringy_free(struct stringy *stringy)
+void stringy_free(struct stringy **stringy)
 {
-	free(stringy);
+	if (stringy && *stringy) {
+		if ((*stringy)->token) {
+			token_free(&(*stringy)->token);
+		}
+
+		free(*stringy);
+		*stringy = NULL;
+	}
 }
 
 struct primary_expr* primary_expr_clone(struct primary_expr *expr)
@@ -379,32 +405,40 @@ struct primary_expr* primary_expr_clone(struct primary_expr *expr)
 
 cleanup:
 	if (error) {
-		primary_expr_free(clone);
-		clone = NULL;
+		primary_expr_free(&clone);
 	}
 
 	return clone;
 }
 
-void primary_expr_free(struct primary_expr *expr)
+void primary_expr_free(struct primary_expr **expr)
 {
-	if (expr->stringy) {
-		stringy_free(expr->stringy);
-	}
+	if (expr && *expr) {
+		if ((*expr)->stringy) {
+			stringy_free(&(*expr)->stringy);
+		}
 
-	if (expr->line_expr) {
-		line_expr_free(expr->line_expr);
-	}
+		if ((*expr)->line_expr) {
+			line_expr_free(&(*expr)->line_expr);
+		}
 
-	if (expr->col_expr) {
-		col_expr_free(expr->col_expr);
-	}
+		if ((*expr)->col_expr) {
+			col_expr_free(&(*expr)->col_expr);
+		}
 
-	if (expr->telex) {
-		telex_free(expr->telex);
-	}
+		if ((*expr)->lparen) {
+			token_free(&(*expr)->lparen);
+		}
+		if ((*expr)->telex) {
+			telex_free(&(*expr)->telex);
+		}
+		if ((*expr)->rparen) {
+			token_free(&(*expr)->rparen);
+		}
 
-	free(expr);
+		free(*expr);
+		*expr = NULL;
+	}
 }
 
 struct or_expr* or_expr_clone(struct or_expr *expr)
@@ -431,24 +465,30 @@ struct or_expr* or_expr_clone(struct or_expr *expr)
 
 cleanup:
 	if (error) {
-		or_expr_free(clone);
-		clone = NULL;
+		or_expr_free(&clone);
 	}
 
 	return clone;
 }
 
-void or_expr_free(struct or_expr *expr)
+void or_expr_free(struct or_expr **expr)
 {
-	if (expr->or_expr) {
-		or_expr_free(expr->or_expr);
-	}
+	if (expr && *expr) {
+		if ((*expr)->or_expr) {
+			or_expr_free(&(*expr)->or_expr);
+		}
 
-	if (expr->primary_expr) {
-		primary_expr_free(expr->primary_expr);
-	}
+		if ((*expr)->or) {
+			token_free(&(*expr)->or);
+		}
 
-	free(expr);
+		if ((*expr)->primary_expr) {
+			primary_expr_free(&(*expr)->primary_expr);
+		}
+
+		free(*expr);
+		*expr = NULL;
+	}
 }
 
 struct compound_expr* compound_expr_clone(struct compound_expr *expr)
@@ -475,24 +515,30 @@ struct compound_expr* compound_expr_clone(struct compound_expr *expr)
 
 cleanup:
 	if (error) {
-		compound_expr_free(clone);
-		clone = NULL;
+		compound_expr_free(&clone);
 	}
 
 	return clone;
 }
 
-void compound_expr_free(struct compound_expr *expr)
+void compound_expr_free(struct compound_expr **expr)
 {
-	if (expr->compound_expr) {
-		compound_expr_free(expr->compound_expr);
-	}
+	if (expr && *expr) {
+		if ((*expr)->compound_expr) {
+			compound_expr_free(&(*expr)->compound_expr);
+		}
 
-	if (expr->or_expr) {
-		or_expr_free(expr->or_expr);
-	}
+		if ((*expr)->prefix) {
+			token_free(&(*expr)->prefix);
+		}
 
-	free(expr);
+		if ((*expr)->or_expr) {
+			or_expr_free(&(*expr)->or_expr);
+		}
+
+		free(*expr);
+		*expr = NULL;
+	}
 }
 
 struct telex* telex_clone(struct telex *telex)
@@ -504,21 +550,25 @@ struct telex* telex_clone(struct telex *telex)
 
 		if (telex->compound_expr &&
 		    !(clone->compound_expr = compound_expr_clone(telex->compound_expr))) {
-			free(clone);
-			clone = NULL;
+			telex_free(&clone);
 		}
 	}
 
 	return clone;
 }
 
-void telex_free(struct telex *telex)
+void telex_free(struct telex **telex)
 {
-	if (telex) {
-		if (telex->compound_expr) {
-			compound_expr_free(telex->compound_expr);
+	if (telex && *telex) {
+		if ((*telex)->compound_expr) {
+			compound_expr_free(&(*telex)->compound_expr);
 		}
 
-		free(telex);
+		if ((*telex)->prefix) {
+			token_free(&(*telex)->prefix);
+		}
+
+		free(*telex);
+		*telex = NULL;
 	}
 }

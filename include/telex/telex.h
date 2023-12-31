@@ -30,7 +30,7 @@ int telex_parse(struct telex **telex,
                 const char *input,
                 struct telex_error **errors);
 void telex_debug(struct telex *telex);
-void telex_free(struct telex *telex);
+void telex_free(struct telex **telex);
 
 int telex_to_string(struct telex *telex, char *str, const size_t str_size);
 int telex_combine(struct telex **combined, struct telex *left, struct telex *right);
