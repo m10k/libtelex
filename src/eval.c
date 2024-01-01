@@ -13,7 +13,7 @@ static const char* rstrstr(const char *haystack, const char *pos, const char *ne
 
 	while (pos >= haystack) {
 		if (strncmp(pos, needle, len) == 0) {
-			return pos;
+			return pos + len;
 		}
 
 		pos--;
