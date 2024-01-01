@@ -99,26 +99,45 @@ int eval_line_expr(struct line_expr *expr, const char *start, const size_t size,
 
 	steps = expr->integer->integer;
 	dir = (prefix == TOKEN_LESS || prefix == TOKEN_DLESS) ? -1 : +1;
-	if (steps < 0) {
-		dir = -dir;
-		steps = -steps;
+	if (prefix == TOKEN_DLESS || prefix == TOKEN_DGREATER) {
+		steps++;
 	}
 
-	while (steps--) {
-		const char *new_pos;
+	if (dir < 0) {
+		while (steps--) {
+			const char *new_pos;
 
-		new_pos = find_char(start, pos, dir, '\n');
-
-		if (!new_pos) {
-			if (dir < 0) {
+			if (*pos == '\n' && --pos < start) {
 				*result = start;
-			} else {
-				*result = pos;
+				return 0;
 			}
-			return 0;
+
+			if (!(new_pos = find_char(start, pos, dir, '\n'))) {
+				*result = start;
+				return 0;
+			}
+
+			pos = new_pos;
 		}
 
-		pos = new_pos + 1;
+		if (prefix == TOKEN_DLESS) {
+			pos++;
+		}
+	} else {
+		while (steps--) {
+			const char *new_pos;
+
+			if (!(new_pos = find_char(start, pos, dir, '\n'))) {
+				*result = pos;
+				return 0;
+			}
+
+			pos = new_pos + 1;
+		}
+
+		if (prefix == TOKEN_DGREATER) {
+			pos--;
+		}
 	}
 
 	*result = pos;
