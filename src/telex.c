@@ -572,3 +572,12 @@ void telex_free(struct telex **telex)
 		*telex = NULL;
 	}
 }
+
+int telex_is_relative(struct telex *telex)
+{
+	if (!telex) {
+		return -EINVAL;
+	}
+
+	return telex->prefix != NULL;
+}

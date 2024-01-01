@@ -41,5 +41,6 @@ const char* telex_lookup(struct telex *telex, const char *start,
                          const size_t size, const char *pos);
 const char* telex_lookup_multi(const char *start, const size_t size,
                                const char *pos, int n, ...);
+int telex_is_relative(struct telex *telex);
 
 #endif /* TELEX_TELEX_H */
