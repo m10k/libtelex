@@ -33,8 +33,16 @@ int eval_string(struct token *string, const char *start, const size_t size,
 
 	if (prefix == TOKEN_LESS || prefix == TOKEN_DLESS) {
 		new_pos = rstrstr(start, pos, string->lexeme, string->lexeme_len);
+
+		if (new_pos && prefix == TOKEN_DLESS) {
+			new_pos -= string->lexeme_len;
+		}
 	} else {
 		new_pos = strstr(pos, string->lexeme);
+
+		if (new_pos && prefix == TOKEN_DGREATER) {
+			new_pos += string->lexeme_len;
+		}
 	}
 
 	if (!new_pos) {
