@@ -102,6 +102,9 @@ int eval_line_expr(struct line_expr *expr, const char *start, const size_t size,
 
 	if (prefix == TOKEN_DLESS || prefix == TOKEN_DGREATER) {
 		steps++;
+	} else if (prefix == TOKEN_INVALID) {
+		/* when making absolute movements, :1 is the first line, not :0 */
+		steps--;
 	}
 
 	if (dir < 0) {
