@@ -99,6 +99,7 @@ int eval_line_expr(struct line_expr *expr, const char *start, const size_t size,
 
 	steps = expr->integer->integer;
 	dir = (prefix == TOKEN_LESS || prefix == TOKEN_DLESS) ? -1 : +1;
+
 	if (prefix == TOKEN_DLESS || prefix == TOKEN_DGREATER) {
 		steps++;
 	}
@@ -252,6 +253,8 @@ int eval_or_expr(struct or_expr *expr, const char *start, const size_t size,
 int eval_compound_expr(struct compound_expr *expr, const char *start, const size_t size,
                        const char *pos, token_type_t prefix, const char **result)
 {
+	token_type_t effective_prefix;
+
 	if (!expr || !start || !pos || !result) {
 		return -EINVAL;
 	}
@@ -266,11 +269,9 @@ int eval_compound_expr(struct compound_expr *expr, const char *start, const size
 		}
 	}
 
-	if (expr->prefix) {
-		prefix = expr->prefix->type;
-	}
+	effective_prefix = expr->prefix ? expr->prefix->type : prefix;
 
-	return eval_or_expr(expr->or_expr, start, size, pos, prefix, result);
+	return eval_or_expr(expr->or_expr, start, size, pos, effective_prefix, result);
 }
 
 int eval_telex(struct telex *telex, const char *start, const size_t size,
@@ -290,11 +291,7 @@ int eval_telex(struct telex *telex, const char *start, const size_t size,
 		pos = start;
 	}
 
-	if (prefix == TOKEN_INVALID) {
-		effective_prefix = telex->prefix ? telex->prefix->type : TOKEN_GREATER;
-	} else {
-		effective_prefix = prefix;
-	}
+	effective_prefix = telex->prefix ? telex->prefix->type : prefix;
 
 	return eval_compound_expr(telex->compound_expr, start, size, pos, effective_prefix, result);
 }
