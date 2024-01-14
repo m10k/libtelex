@@ -132,7 +132,7 @@ int eval_line_expr(struct line_expr *expr, const char *start, const size_t size,
 			const char *new_pos;
 
 			if (!(new_pos = find_char(start, pos, dir, '\n'))) {
-				*result = pos;
+				*result = pos + strlen(pos);
 				return 0;
 			}
 
