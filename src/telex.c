@@ -53,6 +53,43 @@ int telex_parse(struct telex **telex,
 	return have_errors;
 }
 
+int telex_rlookup(struct telex **telex, const char *start, const char *pos)
+{
+	struct telex_error *errors;
+	char telex_str[64];
+	const char *cur;
+	int line;
+	int col;
+	int err;
+
+	if (!telex || !start || !pos) {
+		return -EINVAL;
+	}
+
+	line = 1;
+	col = 0;
+
+	for (cur = start; cur < pos; cur++) {
+		if (*cur == '\n') {
+			line++;
+			col = 0;
+			continue;
+		}
+
+		col++;
+	}
+
+	snprintf(telex_str, sizeof(telex_str), ":%d>#%d", line, col);
+
+	err = telex_parse(telex, telex_str, &errors);
+
+	if (err < 0 && errors) {
+		telex_error_free_all(&errors);
+	}
+
+	return err;
+}
+
 void telex_debug(struct telex *telex)
 {
         parser_debug_telex(telex);
