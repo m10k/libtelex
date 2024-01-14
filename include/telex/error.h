@@ -28,4 +28,7 @@ int telex_error_get_line(struct telex_error *error);
 int telex_error_get_col(struct telex_error *error);
 struct telex_error* telex_error_get_next(struct telex_error *error);
 
+void telex_error_free(struct telex_error **error);
+void telex_error_free_all(struct telex_error **errors);
+
 #endif /* TELEX_ERROR_H */

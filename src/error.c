@@ -56,6 +56,27 @@ struct telex_error* telex_error_new(int line, int col, const char *fmt, ...)
 	return error;
 }
 
+void telex_error_free(struct telex_error **error)
+{
+	if ((*error)->message) {
+		free((*error)->message);
+	}
+
+	free(*error);
+	*error = NULL;
+}
+
+void telex_error_free_all(struct telex_error **errors)
+{
+	while (*errors) {
+		struct telex_error *next;
+
+		next = (*errors)->next;
+		telex_error_free(errors);
+		*errors = next;
+	}
+}
+
 const char* telex_error_get_message(struct telex_error *error)
 {
 	return error->message;
