@@ -442,8 +442,10 @@ struct col_expr* col_expr_clone(struct col_expr *expr)
 	struct col_expr *clone;
 
 	if ((clone = calloc(1, sizeof(*clone)))) {
-		clone->pound = expr->pound;
-		clone->integer = expr->integer;
+		if ((expr->pound && !(clone->pound = token_clone(expr->pound))) ||
+		    (expr->integer && !(clone->integer = token_clone(expr->integer)))) {
+			col_expr_free(&clone);
+		}
 	}
 
 	return clone;
@@ -468,8 +470,12 @@ struct line_expr* line_expr_clone(struct line_expr *expr)
 	struct line_expr *clone;
 
 	if ((clone = calloc(1, sizeof(*clone)))) {
-		clone->colon = expr->colon;
-		clone->integer = expr->integer;
+		if ((expr->colon &&
+		     !(clone->colon = token_clone(expr->colon))) ||
+		    (expr->integer &&
+		     !(clone->integer = token_clone(expr->integer)))) {
+			line_expr_free(&clone);
+		}
 	}
 
 	return clone;
@@ -495,7 +501,10 @@ struct stringy* stringy_clone(struct stringy *stringy)
 	struct stringy *clone;
 
 	if ((clone = calloc(1, sizeof(*clone)))) {
-		clone->token = stringy->token;
+		if (stringy->token &&
+		    !(clone->token = token_clone(stringy->token))) {
+			stringy_free(&clone);
+		}
 	}
 
 	return clone;
@@ -538,7 +547,7 @@ struct primary_expr* primary_expr_clone(struct primary_expr *expr)
 	if ((clone = calloc(1, sizeof(*clone)))) {
 		if (expr->stringy &&
 		    !(clone->stringy = stringy_clone(expr->stringy))) {
-				goto cleanup;
+			goto cleanup;
 		}
 
 		if (expr->line_expr &&
@@ -551,14 +560,20 @@ struct primary_expr* primary_expr_clone(struct primary_expr *expr)
 			goto cleanup;
 		}
 
-		clone->lparen = expr->lparen;
+		if (expr->lparen &&
+		    !(clone->lparen = token_clone(expr->lparen))) {
+			goto cleanup;
+		}
 
 		if (expr->telex &&
 		    !(clone->telex = telex_clone(expr->telex))) {
 			goto cleanup;
 		}
 
-		clone->rparen = expr->rparen;
+		if (expr->rparen &&
+		    !(clone->rparen = token_clone(expr->rparen))) {
+			goto cleanup;
+		}
 		error = 0;
 	}
 
@@ -633,7 +648,10 @@ struct or_expr* or_expr_clone(struct or_expr *expr)
 			goto cleanup;
 		}
 
-		clone->or = expr->or;
+		if (expr->or &&
+		    !(clone->or = token_clone(expr->or))) {
+			goto cleanup;
+		}
 		error = 0;
 	}
 
@@ -698,7 +716,11 @@ struct compound_expr* compound_expr_clone(struct compound_expr *expr)
 			goto cleanup;
 		}
 
-		clone->prefix = expr->prefix;
+		if (expr->prefix &&
+		    !(clone->prefix = token_clone(expr->prefix))) {
+			goto cleanup;
+		}
+
 		error = 0;
 	}
 
@@ -735,10 +757,10 @@ struct telex* telex_clone(const struct telex *telex)
 	struct telex *clone;
 
 	if ((clone = calloc(1, sizeof(*clone)))) {
-		clone->prefix = telex->prefix;
-
-		if (telex->compound_expr &&
-		    !(clone->compound_expr = compound_expr_clone(telex->compound_expr))) {
+		if ((telex->prefix &&
+		     !(clone->prefix = token_clone(telex->prefix))) ||
+		    ((telex->compound_expr &&
+		      !(clone->compound_expr = compound_expr_clone(telex->compound_expr))))) {
 			telex_free(&clone);
 		}
 	}
