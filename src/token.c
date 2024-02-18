@@ -303,11 +303,11 @@ struct token* token_clone(struct token *token)
 	return clone;
 }
 
-static struct token* token_new(token_type_t type,
-			       const char *lexeme,
-			       size_t lexeme_len,
-			       int line,
-			       int col)
+struct token* token_new(token_type_t type,
+                        const char *lexeme,
+                        size_t lexeme_len,
+                        int line,
+                        int col)
 {
 	struct token *token;
 

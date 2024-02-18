@@ -58,6 +58,11 @@ struct token {
 
 const char* token_type_str(token_type_t type);
 
+struct token* token_new(token_type_t type,
+                        const char *lexeme,
+                        size_t lexeme_len,
+                        int line,
+                        int col);
 struct token* token_clone(struct token *token);
 void token_free(struct token **token);
 
