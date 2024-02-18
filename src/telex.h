@@ -59,6 +59,9 @@ struct primary_expr {
 	struct token *rparen;
 };
 
+struct primary_expr* primary_expr_nested_new(struct token *lparen,
+					     struct telex *telex,
+					     struct token *rparen);
 struct primary_expr* primary_expr_clone(struct primary_expr *expr);
 void primary_expr_free(struct primary_expr **expr);
 
@@ -68,6 +71,9 @@ struct or_expr {
 	struct primary_expr *primary_expr;
 };
 
+struct or_expr* or_expr_new(struct or_expr *or_expr,
+			    struct token *or,
+			    struct primary_expr *primary_expr);
 struct or_expr* or_expr_clone(struct or_expr *expr);
 void or_expr_free(struct or_expr **expr);
 
@@ -77,6 +83,9 @@ struct compound_expr {
 	struct or_expr *or_expr;
 };
 
+struct compound_expr* compound_expr_new(struct compound_expr *compound_expr,
+					struct token *prefix,
+					struct or_expr *or_expr);
 struct compound_expr* compound_expr_clone(struct compound_expr *expr);
 void compound_expr_free(struct compound_expr **expr);
 
@@ -84,5 +93,8 @@ struct telex {
 	struct token *prefix;
 	struct compound_expr *compound_expr;
 };
+
+struct telex* telex_new(struct token *prefix,
+			struct compound_expr *compound_expr);
 
 #endif /* TELEX_H */

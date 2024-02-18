@@ -35,14 +35,14 @@ void telex_debug(struct telex *telex);
 void telex_free(struct telex **telex);
 
 int telex_to_string(struct telex *telex, char *str, const size_t str_size);
-int telex_combine(struct telex **combined, struct telex *left, struct telex *right);
-struct telex* telex_clone(struct telex *telex);
+int telex_combine(struct telex **combined, const struct telex *left, const struct telex *right);
+struct telex* telex_clone(const struct telex *telex);
 void telex_simplify(struct telex *telex);
 
 const char* telex_lookup(struct telex *telex, const char *start,
                          const size_t size, const char *pos);
 const char* telex_lookup_multi(const char *start, const size_t size,
                                const char *pos, int n, ...);
-int telex_is_relative(struct telex *telex);
+int telex_is_relative(const struct telex *telex);
 
 #endif /* TELEX_TELEX_H */

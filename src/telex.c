@@ -27,6 +27,19 @@
 #include "telex.h"
 #include "parser.h"
 
+struct telex* telex_new(struct token *prefix,
+			struct compound_expr *compound_expr)
+{
+	struct telex *telex;
+
+	if ((telex = calloc(1, sizeof(*telex)))) {
+		telex->prefix = prefix;
+		telex->compound_expr = compound_expr;
+	}
+
+	return telex;
+}
+
 int eval_telex(struct telex *telex, const char *start, const size_t size,
                const char *pos, token_type_t prefix, const char **result);
 
@@ -255,20 +268,114 @@ int telex_to_string(struct telex *telex, char *str, const size_t str_size)
 	return compound_expr_to_string(telex->compound_expr, str + written, str_size - written);
 }
 
-int telex_combine(struct telex **new, struct telex *first, struct telex *second)
+static struct primary_expr* primary_expr_from_telex(struct telex *telex)
 {
-	struct telex *combined;
+	struct token *lparen;
+	struct token *rparen;
+	struct primary_expr *expr;
+
+	lparen = NULL;
+	rparen = NULL;
+	expr = NULL;
+
+	if ((lparen = token_new(TOKEN_LPAREN, "(", 1, -1, -1)) &&
+	    (rparen = token_new(TOKEN_RPAREN, ")", 1, -1, -1)) &&
+	    (expr = primary_expr_nested_new(lparen, telex, rparen))) {
+		return expr;
+	}
+
+	token_free(&lparen);
+	token_free(&rparen);
+
+	return NULL;
+}
+
+static struct or_expr* or_expr_from_telex(struct telex *telex)
+{
+	struct or_expr *expr;
+
+	if ((expr = calloc(1, sizeof(*expr)))) {
+		if (!(expr->primary_expr = primary_expr_from_telex(telex))) {
+			free(expr);
+			expr = NULL;
+		}
+	}
+
+	return expr;
+}
+
+static struct compound_expr* compound_expr_from_telex(struct telex *telex)
+{
+	struct compound_expr *compound_expr;
+
+	if ((compound_expr = calloc(1, sizeof(*compound_expr)))) {
+		if (!(compound_expr->or_expr = or_expr_from_telex(telex))) {
+			free(compound_expr);
+			compound_expr = NULL;
+		}
+	}
+
+	return compound_expr;
+}
+
+int telex_combine(struct telex **new, const struct telex *first, const struct telex *second)
+{
+	struct telex *left;
+	struct telex *right;
+	struct token *left_op;
+	struct token *concat_op;
+	struct compound_expr *left_expr;
+	struct or_expr *right_expr;
+	struct compound_expr *combined_expr;
 
 	if (!new || !first || !second) {
 		return -EINVAL;
 	}
 
-	if (!(combined = calloc(1, sizeof(*combined)))) {
+	/*
+	 * If second telex isn't relative, we can't know what
+	 * operator to use to concatenate the two expressions.
+	 */
+	if (!telex_is_relative(second)) {
+		return -EBADE;
+	}
+
+	if (!(left = telex_clone(first))) {
+		return -ENOMEM;
+	}
+	if (!(right = telex_clone(second))) {
+		telex_free(&left);
 		return -ENOMEM;
 	}
 
+	/*
+	 * The value of these two would otherwise be undefined if something in
+	 * the if-statement below evaluates to false
+	 */
+	right_expr = NULL;
+	combined_expr = NULL;
 
-	return -ENOSYS;
+	left_op = left->prefix;
+	left->prefix = NULL;
+	concat_op = right->prefix;
+	right->prefix = NULL;
+
+	if ((left_expr = compound_expr_from_telex(left)) &&
+	    ((right_expr = or_expr_from_telex(right))) &&
+	    ((combined_expr = compound_expr_new(left_expr, concat_op, right_expr))) &&
+	    ((*new = telex_new(left_op, combined_expr)))) {
+		return 0;
+	}
+
+	compound_expr_free(&left_expr);
+	or_expr_free(&right_expr);
+	compound_expr_free(&combined_expr);
+	telex_free(&left);
+	telex_free(&right);
+	token_free(&left_op);
+	token_free(&concat_op);
+
+	return -ENOMEM;
 }
 
 void telex_simplify(struct telex *telex)
@@ -406,6 +513,21 @@ void stringy_free(struct stringy **stringy)
 	}
 }
 
+struct primary_expr* primary_expr_nested_new(struct token *lparen,
+					     struct telex *telex,
+					     struct token *rparen)
+{
+	struct primary_expr *expr;
+
+	if ((expr = calloc(1, sizeof(*expr)))) {
+		expr->lparen = lparen;
+		expr->telex = telex;
+		expr->rparen = rparen;
+	}
+
+	return expr;
+}
+
 struct primary_expr* primary_expr_clone(struct primary_expr *expr)
 {
 	struct primary_expr *clone;
@@ -478,6 +600,21 @@ void primary_expr_free(struct primary_expr **expr)
 	}
 }
 
+struct or_expr* or_expr_new(struct or_expr *or_expr,
+			    struct token *or,
+			    struct primary_expr *primary_expr)
+{
+	struct or_expr *expr;
+
+	if ((expr = calloc(1, sizeof(*expr)))) {
+		expr->or_expr = or_expr;
+		expr->or = or;
+		expr->primary_expr = primary_expr;
+	}
+
+	return expr;
+}
+
 struct or_expr* or_expr_clone(struct or_expr *expr)
 {
 	struct or_expr *clone;
@@ -526,6 +663,21 @@ void or_expr_free(struct or_expr **expr)
 		free(*expr);
 		*expr = NULL;
 	}
+}
+
+struct compound_expr* compound_expr_new(struct compound_expr *compound_expr,
+					struct token *prefix,
+					struct or_expr *or_expr)
+{
+	struct compound_expr *expr;
+
+	if ((expr = calloc(1, sizeof(*expr)))) {
+		expr->compound_expr = compound_expr;
+		expr->prefix = prefix;
+		expr->or_expr = or_expr;
+	}
+
+	return expr;
 }
 
 struct compound_expr* compound_expr_clone(struct compound_expr *expr)
@@ -578,7 +730,7 @@ void compound_expr_free(struct compound_expr **expr)
 	}
 }
 
-struct telex* telex_clone(struct telex *telex)
+struct telex* telex_clone(const struct telex *telex)
 {
 	struct telex *clone;
 
@@ -610,7 +762,7 @@ void telex_free(struct telex **telex)
 	}
 }
 
-int telex_is_relative(struct telex *telex)
+int telex_is_relative(const struct telex *telex)
 {
 	if (!telex) {
 		return -EINVAL;
